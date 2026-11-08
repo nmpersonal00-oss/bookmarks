@@ -1,0 +1,1438 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Bookmark Manager</title>
+  <style>
+    :root {
+      --bg: #021a1b;
+      --bg-2: #062728;
+      --panel: #062f30;
+      --panel-2: #083536;
+      --card: #063536;
+      --card-2: #073d3f;
+      --border: rgba(120, 196, 180, 0.18);
+      --border-strong: rgba(126, 213, 190, 0.32);
+      --text: #e9fbf4;
+      --muted: #98c0b8;
+      --muted-2: #7ba59c;
+      --chip: rgba(131, 196, 180, 0.12);
+      --chip-text: #bfe7de;
+      --accent: #0d6f67;
+      --accent-2: #12917e;
+      --accent-soft: rgba(19, 145, 126, 0.18);
+      --danger: #ff8f9b;
+      --shadow: rgba(0, 0, 0, 0.28);
+      --radius-xl: 18px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(18,145,126,0.12), transparent 24%),
+        radial-gradient(circle at top right, rgba(18,145,126,0.08), transparent 18%),
+        #011112;
+      overflow: hidden;
+    }
+
+    button, input, textarea { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; }
+    .app {
+      width: min(1240px, calc(100vw - 48px));
+      height: min(820px, calc(100vh - 48px));
+      margin: 24px auto;
+      display: grid;
+      grid-template-columns: 0 minmax(0, 1fr);
+      transition: grid-template-columns .22s ease;
+      background: linear-gradient(180deg, rgba(5,42,43,.98), rgba(4,30,31,.98));
+      border: 1px solid rgba(122, 207, 184, 0.12);
+      border-radius: 0;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,.36);
+    }
+
+    .app.sidebar-open { grid-template-columns: 255px minmax(0, 1fr); }
+    .sidebar {
+      overflow: hidden;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .14s ease, visibility .14s;
+      background: linear-gradient(180deg, #032d2e, #022426);
+      border-right: 1px solid var(--border);
+      padding: 18px 14px 18px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .sidebar-open .sidebar {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transition-delay: .06s;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 6px 18px;
+      font-weight: 700;
+      font-size: 16px;
+      justify-content: space-between;
+    }
+    .brand-name { display: inline-flex; flex: 1; align-items: center; gap: 9px; min-width: 0; white-space: nowrap; font-size: 14px; }
+    .brand-name span { overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-close { flex: 0 0 auto; }
+    .sidebar-close {
+      background: transparent; border: 0; color: var(--muted); border-radius: 7px;
+      width: 29px; height: 29px; display: grid; place-items: center;
+    }
+    .sidebar-close:hover { background: rgba(255,255,255,.08); color: var(--text); }
+    .brand-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: #dcfff8;
+      flex: 0 0 auto;
+    }
+    .brand-badge svg, .icon { width: 16px; height: 16px; }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .nav-btn {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 10px;
+      font-weight: 600;
+      text-align: left;
+    }
+    .nav-btn.active, .nav-btn:hover {
+      color: var(--text);
+      background: rgba(19,145,126,0.18);
+      border-color: rgba(19,145,126,0.28);
+    }
+    .sidebar-section-label {
+      color: #d4eee8;
+      opacity: .82;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      margin: 12px 10px 12px;
+      text-transform: uppercase;
+    }
+    .tags-list {
+      overflow: auto;
+      padding-right: 4px;
+      flex: 1;
+    }
+    .sidebar-bottom {
+      margin-top: auto;
+      display: flex;
+      gap: 9px;
+      padding: 16px 4px 1px;
+      border-top: 1px solid var(--border);
+    }
+    .sidebar-bottom .ghost-btn { flex: 1; justify-content: center; }
+    .sidebar-backdrop { display: none; }
+    .tag-row {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .tag-row:hover, .tag-row.active {
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+    .tag-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .tag-check {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid var(--border-strong);
+      background: rgba(255,255,255,0.01);
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+    .tag-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tag-count {
+      min-width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      padding: 0 7px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.06);
+      display: inline-grid;
+      place-items: center;
+      font-size: 12px;
+      color: #bfe7de;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: 68px 1fr;
+      min-width: 0;
+      min-height: 0;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 26px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(2, 35, 36, 0.55);
+    }
+    .menu-toggle {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border-radius: 10px;
+      color: var(--text);
+      background: rgba(9,80,76,.48);
+      border: 1px solid rgba(122,207,184,.16);
+    }
+    .menu-toggle:hover, .menu-toggle[aria-expanded="true"] { background: rgba(12,105,93,.70); }
+    .menu-toggle svg { width: 19px; height: 19px; }
+    .search-wrap {
+      flex: 1;
+      max-width: 330px;
+      position: relative;
+    }
+    .search-wrap .icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted-2);
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      height: 42px;
+      padding: 0 16px 0 42px;
+      background: linear-gradient(180deg, rgba(8,68,67,0.55), rgba(5,52,53,0.7));
+      border: 1px solid rgba(102, 181, 166, 0.18);
+      border-radius: 10px;
+      outline: none;
+      color: var(--text);
+    }
+    .search-input::placeholder { color: var(--muted-2); }
+    .search-input:focus {
+      border-color: rgba(84, 212, 185, .45);
+      box-shadow: 0 0 0 3px rgba(18,145,126,.14);
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .add-btn, .sort-btn, .menu-btn, .tiny-btn {
+      border: 1px solid rgba(109, 188, 170, 0.16);
+      background: linear-gradient(180deg, rgba(10,93,83,.94), rgba(8,72,65,.95));
+      color: #ecfff8;
+      height: 42px;
+      border-radius: 10px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+    .sort-btn {
+      background: transparent;
+      color: #d7f1eb;
+      padding: 0 14px;
+    }
+    .menu-btn, .tiny-btn {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      justify-content: center;
+      background: rgba(255,255,255,0.02);
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.1);
+      background: linear-gradient(180deg, #f3d9bc, #c58a55);
+      color: #19302e;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+
+    .content {
+      min-height: 0;
+      overflow: auto;
+      padding: 26px;
+      background: linear-gradient(180deg, rgba(2, 31, 32, 0.46), rgba(3, 24, 25, 0.1));
+    }
+    .content-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+    .page-title {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .count-line {
+      display: none;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(6,59,60,.94), rgba(5,52,53,.96));
+      border: 1px solid rgba(113,196,179,.14);
+      border-radius: 12px;
+      min-width: 0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+      display: flex;
+      align-items: center;
+      padding: 11px 9px 11px 13px;
+      gap: 7px;
+      position: relative;
+      transition: background .15s, border-color .15s;
+    }
+    .card:hover {
+      background: rgba(12,76,75,.96);
+      border-color: rgba(113,196,179,.32);
+    }
+    .card-link {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      gap: 12px;
+      min-width: 0;
+      border-radius: 7px;
+      outline-offset: 3px;
+    }
+    .site-icon-wrap {
+      position: relative;
+      width: 43px;
+      height: 43px;
+      flex: 0 0 auto;
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(255,255,255,.09);
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.05);
+    }
+    .site-icon-wrap img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      padding: 7px;
+      background: #eff8f5;
+      opacity: 0;
+    }
+    .site-icon-wrap img.loaded { opacity: 1; }
+    .site-icon-fallback {
+      font-weight: 750;
+      font-size: 18px;
+      color: #e6fff8;
+    }
+    .site-meta { min-width: 0; }
+    .site-title {
+      margin: 0 0 5px;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .site-url {
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .card-controls { display: flex; gap: 1px; align-items: center; flex: 0 0 auto; }
+    .card-menu-wrap { position: relative; }
+    .dots-btn, .pin-btn {
+      width: 29px;
+      height: 32px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .dots-btn:hover, .pin-btn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+    .pin-btn.pinned { color: #8de6d1; }
+    .pin-btn .icon, .dots-btn .icon { width: 15px; height: 15px; }
+    .dropdown {
+      position: absolute;
+      right: 0;
+      top: 40px;
+      width: 170px;
+      background: #082d2e;
+      border: 1px solid rgba(122, 207, 184, 0.16);
+      border-radius: 12px;
+      padding: 6px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      z-index: 20;
+    }
+    .dropdown[hidden] { display: none; }
+    .dropdown button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+    }
+    .dropdown button:hover { background: rgba(255,255,255,0.06); }
+    .dropdown .danger { color: var(--danger); }
+
+    .empty {
+      border: 1px dashed rgba(122, 207, 184, 0.22);
+      border-radius: 14px;
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255,255,255,0.02);
+    }
+    .empty h3 {
+      margin: 0 0 10px;
+      color: var(--text);
+      font-size: 20px;
+    }
+    .empty p {
+      margin: 0 auto 18px;
+      max-width: 420px;
+      line-height: 1.6;
+    }
+
+    dialog {
+      border: 1px solid rgba(122, 207, 184, 0.16);
+      background: #07292a;
+      color: var(--text);
+      border-radius: 18px;
+      width: min(520px, calc(100vw - 32px));
+      padding: 0;
+      box-shadow: 0 30px 80px rgba(0,0,0,.45);
+    }
+    dialog::backdrop {
+      background: rgba(0,0,0,.58);
+      backdrop-filter: blur(2px);
+    }
+    .modal {
+      padding: 22px;
+    }
+    .modal-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .modal-title {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: -.02em;
+    }
+    .modal-subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .close-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+    }
+    .field {
+      margin-bottom: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 7px;
+      color: #daf3ed;
+      font-weight: 600;
+    }
+    .field input, .field textarea {
+      width: 100%;
+      border: 1px solid rgba(122, 207, 184, 0.14);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 12px 13px;
+      outline: none;
+    }
+    .field textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    .field input:focus, .field textarea:focus {
+      border-color: rgba(84, 212, 185, .45);
+      box-shadow: 0 0 0 3px rgba(18,145,126,.14);
+    }
+    .error {
+      color: var(--danger);
+      font-size: 12px;
+      min-height: 16px;
+      margin-top: 5px;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .secondary-btn {
+      border: 1px solid rgba(122, 207, 184, 0.14);
+      background: transparent;
+      color: var(--text);
+      border-radius: 10px;
+      height: 42px;
+      padding: 0 16px;
+      font-weight: 600;
+    }
+    .secondary-btn:hover { background: rgba(255,255,255,0.05); }
+
+    .toolbar-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 18px;
+      flex-wrap: wrap;
+    }
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .ghost-btn {
+      border: 1px solid rgba(122, 207, 184, 0.14);
+      background: transparent;
+      color: var(--muted);
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ghost-btn:hover, .ghost-btn.active {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+    .storage-warning {
+      border: 1px solid rgba(255,164,137,.55);
+      background: rgba(131,64,47,.14);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: #ffccc0;
+      font-size: 13px;
+      margin: 0 0 18px;
+      line-height: 1.5;
+    }
+    .storage-warning[hidden] { display: none; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      background: #082d2e;
+      color: var(--text);
+      border: 1px solid rgba(122, 207, 184, 0.14);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+    .hidden-file-input { display: none; }
+
+    .header-actions { display: flex; align-items: center; gap: 7px; }
+    .header-actions .ghost-btn { height: 38px; padding: 0 12px; }
+    .content-header { margin-bottom: 20px; }
+    .card .dropdown { top: 36px; }
+    .card:has(.dropdown:not([hidden])) { z-index: 10; }
+    @media (max-width: 860px) {
+      body { overflow: auto; }
+      .app, .app.sidebar-open { width: 100%; height: min(100dvh, 1000px); min-height: 560px; margin: 0; display: block; border: 0; border-radius: 0; }
+      .main { height: 100%; }
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100dvh;
+        width: min(290px, calc(100vw - 40px));
+        z-index: 60;
+        transform: translateX(-101%);
+        transition: transform .2s ease, visibility .2s, opacity .2s;
+        box-shadow: 18px 0 45px rgba(0,0,0,.3);
+      }
+      .sidebar-open .sidebar { transform: translateX(0); opacity: 1; visibility: visible; pointer-events: auto; }
+      .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        z-index: 50;
+        inset: 0;
+        background: rgba(0,0,0,.58);
+        border: 0;
+      }
+      .sidebar-backdrop[hidden] { display: none; }
+      .content { padding: 19px; }
+      .topbar { padding: 12px 18px; }
+      .search-wrap { max-width: none; }
+    }
+    @media (max-width: 540px) {
+      .topbar { gap: 9px; padding: 10px 12px; }
+      .menu-toggle, .search-input, .add-btn { height: 40px; }
+      .add-btn { padding: 0 10px; font-size: 13px; }
+      .add-btn .icon { display: none; }
+      .search-wrap { min-width: 100px; }
+      .search-input { padding: 0 8px 0 34px; }
+      .search-wrap .icon { left: 10px; }
+      .content { padding: 18px 12px; }
+      .page-title { font-size: 18px; }
+      .content-header { gap: 8px; }
+      .sort-btn { padding: 0 9px; font-size: 12px; }
+      .cards { grid-template-columns: 1fr; gap: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .app, .sidebar { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <button type="button" id="sidebarBackdrop" class="sidebar-backdrop" hidden aria-label="Close menu"></button>
+    <aside class="sidebar" id="sidebar" aria-label="Bookmark navigation" aria-hidden="true">
+      <div class="brand">
+        <div class="brand-name">
+        <div class="brand-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 4h10a2 2 0 0 1 2 2v14l-7-4-7 4V6a2 2 0 0 1 2-2z"></path>
+          </svg>
+        </div>
+        <span>Bookmark Manager</span>
+        </div>
+        <button type="button" class="sidebar-close" id="sidebarClose" aria-label="Hide menu" title="Hide menu">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="nav">
+        <button class="nav-btn active" type="button" data-view="home">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V20h14V9.5"></path></svg>
+          <span>Home</span>
+        </button>
+        <button class="nav-btn" type="button" data-view="archived">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18"></path><path d="M5 7l1 13h12l1-13"></path><path d="M10 11h4"></path></svg>
+          <span>Archived</span>
+        </button>
+      </div>
+
+      <div class="sidebar-section-label">Tags</div>
+      <div class="tags-list" id="tagsList"></div>
+      <div class="sidebar-bottom">
+        <button class="ghost-btn" id="exportBtn" type="button" title="Export a bookmark backup">Export</button>
+        <button class="ghost-btn" id="importBtn" type="button" title="Import a bookmark backup">Import</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <button type="button" class="menu-toggle" id="menuToggle" aria-label="Show bookmark menu" aria-expanded="false" aria-controls="sidebar" title="Show menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+        <div class="search-wrap">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input id="searchInput" class="search-input" type="search" placeholder="Search by title..." autocomplete="off">
+        </div>
+        <div class="topbar-right">
+          <button class="add-btn" id="openAddBtn" type="button">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+            <span>Add Bookmark</span>
+          </button>
+        </div>
+      </div>
+
+      <section class="content">
+        <div class="content-header">
+          <h1 class="page-title" id="pageTitle">All bookmarks</h1>
+          <div class="header-actions">
+            <button class="ghost-btn active" id="allFilterBtn" type="button">All</button>
+            <button class="ghost-btn" id="favoritesFilterBtn" type="button">Pinned</button>
+            <button class="sort-btn" id="sortButton" type="button" title="Change sort order">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5h10M11 12h7M11 19h4M4 4v16m0 0-3-3m3 3 3-3"></path></svg>
+              <span id="sortLabel">Newest</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="storageWarning" class="storage-warning" role="alert" hidden>Saving is blocked in this browser. Links may disappear when you reload. Use Export in the menu to back them up.</div>
+        <div id="cards" class="cards"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="bookmarkDialog">
+    <form class="modal" id="bookmarkForm" method="dialog">
+      <div class="modal-top">
+        <div>
+          <h2 class="modal-title" id="dialogTitle">Add bookmark</h2>
+        </div>
+        <button class="close-btn" type="button" id="closeDialogBtn" aria-label="Close">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <label for="titleInput">Title</label>
+        <input id="titleInput" name="title" type="text" maxlength="80" required>
+        <div class="error" id="titleError"></div>
+      </div>
+
+      <div class="field">
+        <label for="urlInput">URL</label>
+        <input id="urlInput" name="url" type="text" inputmode="url" placeholder="https://example.com" required>
+        <div class="error" id="urlError"></div>
+      </div>
+
+      <div class="field">
+        <label for="tagsInput">Tags</label>
+        <input id="tagsInput" name="tags" type="text" placeholder="Phones, Shopping, Deals">
+      </div>
+
+      <div class="modal-actions">
+        <button class="secondary-btn" type="button" id="cancelDialogBtn">Cancel</button>
+        <button class="add-btn" type="submit" id="saveBookmarkBtn">Save bookmark</button>
+      </div>
+    </form>
+  </dialog>
+
+  <input class="hidden-file-input" id="importFileInput" type="file" accept="application/json">
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'quickspace.bookmarks.v2';
+      const SORT_KEY = 'quickspace.sort.v2';
+      const VIEW_KEY = 'quickspace.view.v2';
+      const PINNED_FILTER_KEY = 'quickspace.pinned_filter.v2';
+
+      function createId() {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+        return `bm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
+      }
+
+      const seedBookmarks = [
+        {
+          id: createId(),
+          title: 'Frontend Mentor',
+          url: 'https://www.frontendmentor.io',
+          description: 'Improve your front-end coding skills by building real projects. Solve real-world HTML, CSS and JavaScript challenges.',
+          tags: ['Practice', 'Learning', 'Community'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 40,
+          visits: 47
+        },
+        {
+          id: createId(),
+          title: 'MDN Web Docs',
+          url: 'https://developer.mozilla.org',
+          description: 'Reference docs for HTML, CSS, JavaScript, APIs and general web development guidance.',
+          tags: ['Reference', 'HTML', 'CSS', 'JavaScript'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 32,
+          visits: 152
+        },
+        {
+          id: createId(),
+          title: 'React Docs',
+          url: 'https://react.dev',
+          description: 'The official documentation for React. Learn components, hooks, state and modern UI patterns.',
+          tags: ['JavaScript', 'Framework', 'Reference'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 27,
+          visits: 0
+        },
+        {
+          id: createId(),
+          title: 'Claude',
+          url: 'https://claude.ai',
+          description: 'AI assistant for writing, planning, brainstorming and creative tasks through natural conversation.',
+          tags: ['Tools', 'AI', 'Learning'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 20,
+          visits: 73
+        },
+        {
+          id: createId(),
+          title: 'Web.dev',
+          url: 'https://web.dev',
+          description: 'Learn how to build modern web experiences that work well on any browser, including performance and accessibility.',
+          tags: ['Performance', 'Learning', 'Tips'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 15,
+          visits: 15
+        },
+        {
+          id: createId(),
+          title: 'Tailwind CSS',
+          url: 'https://tailwindcss.com',
+          description: 'A utility-first CSS framework for rapidly building modern websites without leaving your HTML.',
+          tags: ['CSS', 'Framework', 'Tools'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 11,
+          visits: 52
+        },
+        {
+          id: createId(),
+          title: 'Dev.to',
+          url: 'https://dev.to',
+          description: 'A constructive and inclusive social network for software developers. Share knowledge and grow your career.',
+          tags: ['Community', 'Learning'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 9,
+          visits: 8
+        },
+        {
+          id: createId(),
+          title: 'JavaScript.info',
+          url: 'https://javascript.info',
+          description: 'The Modern JavaScript Tutorial. Step-by-step explanations from the basics to advanced topics.',
+          tags: ['JavaScript', 'Tutorial'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 6,
+          visits: 24
+        },
+        {
+          id: createId(),
+          title: 'freeCodeCamp',
+          url: 'https://www.freecodecamp.org',
+          description: 'Learn to code for free with online courses, projects and certifications backed by an active community.',
+          tags: ['Learning', 'Tutorial', 'Community'],
+          archived: false,
+          pinned: false,
+          createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
+          visits: 89
+        }
+      ];
+
+      const els = {
+        app: document.getElementById('app'),
+        storageWarning: document.getElementById('storageWarning'),
+        sidebar: document.getElementById('sidebar'),
+        sidebarBackdrop: document.getElementById('sidebarBackdrop'),
+        menuToggle: document.getElementById('menuToggle'),
+        sidebarClose: document.getElementById('sidebarClose'),
+        cards: document.getElementById('cards'),
+        tagsList: document.getElementById('tagsList'),
+        pageTitle: document.getElementById('pageTitle'),
+        searchInput: document.getElementById('searchInput'),
+        bookmarkDialog: document.getElementById('bookmarkDialog'),
+        bookmarkForm: document.getElementById('bookmarkForm'),
+        dialogTitle: document.getElementById('dialogTitle'),
+        titleInput: document.getElementById('titleInput'),
+        urlInput: document.getElementById('urlInput'),
+        tagsInput: document.getElementById('tagsInput'),
+        titleError: document.getElementById('titleError'),
+        urlError: document.getElementById('urlError'),
+        openAddBtn: document.getElementById('openAddBtn'),
+        closeDialogBtn: document.getElementById('closeDialogBtn'),
+        cancelDialogBtn: document.getElementById('cancelDialogBtn'),
+        sortButton: document.getElementById('sortButton'),
+        sortLabel: document.getElementById('sortLabel'),
+        toast: document.getElementById('toast'),
+        importFileInput: document.getElementById('importFileInput'),
+        exportBtn: document.getElementById('exportBtn'),
+        importBtn: document.getElementById('importBtn'),
+        allFilterBtn: document.getElementById('allFilterBtn'),
+        favoritesFilterBtn: document.getElementById('favoritesFilterBtn'),
+        navButtons: Array.from(document.querySelectorAll('.nav-btn'))
+      };
+
+      let bookmarks = loadBookmarks();
+      let currentView = readSetting(VIEW_KEY, 'home');
+      let currentSort = readSetting(SORT_KEY, 'recent');
+      let selectedTag = 'all';
+      let onlyPinned = readSetting(PINNED_FILTER_KEY, 'false') === 'true';
+      let editingId = null;
+      let toastTimer = null;
+
+      bindEvents();
+      setSidebarOpen(false);
+      render();
+
+      function bindEvents() {
+        els.menuToggle.addEventListener('click', () => setSidebarOpen(!els.app.classList.contains('sidebar-open')));
+        els.sidebarClose.addEventListener('click', () => setSidebarOpen(false));
+        els.sidebarBackdrop.addEventListener('click', () => setSidebarOpen(false));
+        els.openAddBtn.addEventListener('click', () => openDialog());
+        els.closeDialogBtn.addEventListener('click', closeDialog);
+        els.cancelDialogBtn.addEventListener('click', closeDialog);
+        els.searchInput.addEventListener('input', render);
+
+        els.sortButton.addEventListener('click', () => {
+          const order = ['recent', 'title', 'visits'];
+          currentSort = order[(order.indexOf(currentSort) + 1) % order.length];
+          writeSetting(SORT_KEY, currentSort);
+          render();
+          showToast(`Sort: ${sortLabelFor(currentSort)}`);
+        });
+
+        els.bookmarkForm.addEventListener('submit', event => {
+          event.preventDefault();
+          saveBookmarkFromForm();
+        });
+
+        els.exportBtn.addEventListener('click', exportBookmarks);
+        els.importBtn.addEventListener('click', () => els.importFileInput.click());
+        els.importFileInput.addEventListener('change', importBookmarks);
+
+        els.allFilterBtn.addEventListener('click', () => {
+          onlyPinned = false;
+          writeSetting(PINNED_FILTER_KEY, 'false');
+          render();
+        });
+        els.favoritesFilterBtn.addEventListener('click', () => {
+          onlyPinned = true;
+          writeSetting(PINNED_FILTER_KEY, 'true');
+          render();
+        });
+
+        els.navButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            currentView = btn.dataset.view;
+            selectedTag = 'all';
+            writeSetting(VIEW_KEY, currentView);
+            render();
+            if (window.matchMedia('(max-width: 860px)').matches) setSidebarOpen(false);
+          });
+        });
+
+        document.addEventListener('click', event => {
+          if (!event.target.closest('.card-menu-wrap')) {
+            document.querySelectorAll('.dropdown').forEach(menu => menu.hidden = true);
+          }
+        });
+
+        window.addEventListener('keydown', event => {
+          if (event.key === 'Escape' && els.app.classList.contains('sidebar-open')) setSidebarOpen(false);
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+            event.preventDefault();
+            els.searchInput.focus();
+          }
+        });
+      }
+
+      function setSidebarOpen(open) {
+        els.app.classList.toggle('sidebar-open', open);
+        els.menuToggle.setAttribute('aria-expanded', String(open));
+        els.menuToggle.setAttribute('aria-label', open ? 'Hide bookmark menu' : 'Show bookmark menu');
+        els.menuToggle.title = open ? 'Hide menu' : 'Show menu';
+        els.sidebar.setAttribute('aria-hidden', String(!open));
+        els.sidebarBackdrop.hidden = !open;
+        if ('inert' in els.sidebar) els.sidebar.inert = !open;
+        if (!open && els.sidebar.contains(document.activeElement)) els.menuToggle.focus();
+      }
+
+      function showStorageWarning() {
+        els.storageWarning.hidden = false;
+      }
+
+      function readSetting(key, fallback) {
+        try { return localStorage.getItem(key) ?? fallback; }
+        catch { showStorageWarning(); return fallback; }
+      }
+
+      function writeSetting(key, value) {
+        try { localStorage.setItem(key, value); return true; }
+        catch { showStorageWarning(); return false; }
+      }
+
+      function normalizeUrl(value) {
+        let url = String(value ?? '').trim();
+        if (!url) throw new Error('URL is required');
+        if (!/^https?:\/\//i.test(url)) {
+          if (/^[a-z][a-z0-9+.-]*:/i.test(url)) throw new Error('Only http and https links are supported');
+          url = `https://${url}`;
+        }
+        const parsed = new URL(url);
+        if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) throw new Error('Invalid website URL');
+        return parsed.href;
+      }
+
+      function loadBookmarks() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) {
+            writeSetting(STORAGE_KEY, JSON.stringify(seedBookmarks));
+            return seedBookmarks;
+          }
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : seedBookmarks;
+        } catch (error) {
+          console.error(error);
+          showStorageWarning();
+          return [...seedBookmarks];
+        }
+      }
+
+      function persist() {
+        return writeSetting(STORAGE_KEY, JSON.stringify(bookmarks));
+      }
+
+      function render() {
+        renderNav();
+        renderTagList();
+        renderCards();
+        els.sortLabel.textContent = sortLabelFor(currentSort);
+        els.allFilterBtn.classList.toggle('active', !onlyPinned);
+        els.favoritesFilterBtn.classList.toggle('active', onlyPinned);
+      }
+
+      function renderNav() {
+        els.navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === currentView));
+        els.pageTitle.textContent = currentView === 'archived' ? 'Archived bookmarks' : 'All bookmarks';
+      }
+
+      function getFilteredBookmarks() {
+        const query = els.searchInput.value.trim().toLowerCase();
+        const filtered = bookmarks.filter(bookmark => {
+          if (currentView === 'home' && bookmark.archived) return false;
+          if (currentView === 'archived' && !bookmark.archived) return false;
+          if (onlyPinned && !bookmark.pinned) return false;
+          if (selectedTag !== 'all' && !bookmark.tags.map(t => t.toLowerCase()).includes(selectedTag.toLowerCase())) return false;
+          if (!query) return true;
+          const haystack = [bookmark.title, bookmark.url, bookmark.tags.join(' ')].join(' ').toLowerCase();
+          return haystack.includes(query);
+        });
+
+        return filtered.sort((a, b) => {
+          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+          if (currentSort === 'title') return a.title.localeCompare(b.title);
+          if (currentSort === 'visits') return (b.visits || 0) - (a.visits || 0);
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+      }
+
+      function visibleBookmarksForTags() {
+        return bookmarks.filter(bookmark => currentView === 'archived' ? bookmark.archived : !bookmark.archived);
+      }
+
+      function renderTagList() {
+        const counts = new Map();
+        visibleBookmarksForTags().forEach(bookmark => {
+          bookmark.tags.forEach(tag => {
+            counts.set(tag, (counts.get(tag) || 0) + 1);
+          });
+        });
+
+        const sortedTags = [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+        els.tagsList.innerHTML = '';
+
+        if (!sortedTags.length) {
+          const empty = document.createElement('div');
+          empty.style.color = 'var(--muted)';
+          empty.style.padding = '0 10px';
+          empty.style.fontSize = '14px';
+          empty.textContent = 'No tags yet';
+          els.tagsList.appendChild(empty);
+          return;
+        }
+
+        sortedTags.forEach(([tag, count]) => {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'tag-row' + (selectedTag === tag ? ' active' : '');
+          row.innerHTML = `
+            <span class="tag-left">
+              <span class="tag-check" aria-hidden="true"></span>
+              <span class="tag-name">${escapeHtml(tag)}</span>
+            </span>
+            <span class="tag-count">${count}</span>
+          `;
+          row.addEventListener('click', () => {
+            selectedTag = selectedTag === tag ? 'all' : tag;
+            render();
+          });
+          els.tagsList.appendChild(row);
+        });
+      }
+
+      function renderCards() {
+        const items = getFilteredBookmarks();
+        els.cards.innerHTML = '';
+
+        if (!items.length) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.style.gridColumn = '1 / -1';
+          empty.innerHTML = `
+            <h3>No bookmarks found</h3>
+            <p>Try a different search, change your tag filter, or add a new bookmark.</p>
+            <button class="add-btn" type="button" id="emptyAddBtn">Add Bookmark</button>
+          `;
+          els.cards.appendChild(empty);
+          empty.querySelector('#emptyAddBtn').addEventListener('click', () => openDialog());
+          return;
+        }
+
+        items.forEach(bookmark => {
+          const card = document.createElement('article');
+          card.className = 'card';
+          const host = safeHost(bookmark.url);
+          card.innerHTML = `
+            <a class="card-link" href="${escapeAttribute(bookmark.url)}" target="_blank" rel="noopener noreferrer" title="Open ${escapeAttribute(bookmark.title)}">
+              <div class="site-icon-wrap">${faviconMarkup(bookmark)}</div>
+              <div class="site-meta">
+                <div class="site-title" title="${escapeAttribute(bookmark.title)}">${escapeHtml(bookmark.title)}</div>
+                <div class="site-url" title="${escapeAttribute(host)}">${escapeHtml(host)}</div>
+              </div>
+            </a>
+            <div class="card-controls">
+              <button class="pin-btn ${bookmark.pinned ? 'pinned' : ''}" type="button" title="${bookmark.pinned ? 'Unpin' : 'Pin'} bookmark" aria-label="${bookmark.pinned ? 'Unpin' : 'Pin'} ${escapeAttribute(bookmark.title)}">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M6 3h12m-10 0 1 7-3 4h12l-3-4 1-7"></path></svg>
+              </button>
+              <div class="card-menu-wrap">
+                <button class="dots-btn" type="button" aria-label="More options for ${escapeAttribute(bookmark.title)}" aria-expanded="false">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                </button>
+                <div class="dropdown" hidden>
+                  <button type="button" data-action="open">Open</button>
+                  <button type="button" data-action="edit">Edit</button>
+                  <button type="button" data-action="toggle-archive">${bookmark.archived ? 'Move to Home' : 'Archive'}</button>
+                  <button type="button" data-action="delete" class="danger">Delete</button>
+                </div>
+              </div>
+            </div>
+          `;
+          const img = card.querySelector('.site-icon-wrap img');
+          if (img) {
+            img.addEventListener('load', () => img.classList.add('loaded'));
+            if (img.complete && img.naturalWidth > 0) img.classList.add('loaded');
+            img.addEventListener('error', () => {
+              if (!img.dataset.retried) {
+                img.dataset.retried = '1';
+                img.src = new URL('/favicon.ico', bookmark.url).href;
+              } else {
+                img.remove();
+              }
+            });
+          }
+
+          card.querySelector('.card-link').addEventListener('click', () => incrementVisits(bookmark.id));
+
+          card.querySelector('.pin-btn').addEventListener('click', () => togglePinned(bookmark.id));
+
+          const dotsBtn = card.querySelector('.dots-btn');
+          const dropdown = card.querySelector('.dropdown');
+          dotsBtn.addEventListener('click', event => {
+            event.stopPropagation();
+            document.querySelectorAll('.dropdown').forEach(menu => { if (menu !== dropdown) menu.hidden = true; });
+            dropdown.hidden = !dropdown.hidden;
+            dotsBtn.setAttribute('aria-expanded', String(!dropdown.hidden));
+          });
+
+          dropdown.addEventListener('click', event => {
+            const action = event.target.closest('button')?.dataset.action;
+            if (!action) return;
+            dropdown.hidden = true;
+            dotsBtn.setAttribute('aria-expanded', 'false');
+            if (action === 'open') {
+              incrementVisits(bookmark.id);
+              window.open(bookmark.url, '_blank', 'noopener');
+            } else if (action === 'edit') {
+              openDialog(bookmark);
+            } else if (action === 'toggle-archive') {
+              toggleArchived(bookmark.id);
+            } else if (action === 'delete') {
+              deleteBookmark(bookmark.id);
+            }
+          });
+
+          els.cards.appendChild(card);
+        });
+      }
+
+      function openDialog(bookmark = null) {
+        editingId = bookmark?.id || null;
+        els.dialogTitle.textContent = editingId ? 'Edit bookmark' : 'Add bookmark';
+        els.titleInput.value = bookmark?.title || '';
+        els.urlInput.value = bookmark?.url || '';
+        els.tagsInput.value = bookmark?.tags?.join(', ') || '';
+        clearErrors();
+        els.bookmarkDialog.showModal();
+        setTimeout(() => els.titleInput.focus(), 50);
+      }
+
+      function closeDialog() {
+        els.bookmarkDialog.close();
+        editingId = null;
+        els.bookmarkForm.reset();
+        clearErrors();
+      }
+
+      function clearErrors() {
+        els.titleError.textContent = '';
+        els.urlError.textContent = '';
+      }
+
+      function saveBookmarkFromForm() {
+        clearErrors();
+        const title = els.titleInput.value.trim();
+        const rawUrl = els.urlInput.value.trim();
+        const tags = els.tagsInput.value.split(',').map(t => t.trim()).filter(Boolean);
+
+        let valid = true;
+        if (!title) {
+          els.titleError.textContent = 'Please enter a title.';
+          valid = false;
+        }
+
+        let url = '';
+        try {
+          url = normalizeUrl(rawUrl);
+        } catch {
+          els.urlError.textContent = 'Please enter a valid http or https website address.';
+          valid = false;
+        }
+
+        if (!valid) return;
+
+        if (editingId) {
+          bookmarks = bookmarks.map(item => item.id === editingId ? { ...item, title, url, tags } : item);
+        } else {
+          bookmarks.unshift({
+            id: createId(),
+            title,
+            url,
+            description: '',
+            tags,
+            archived: false,
+            pinned: false,
+            createdAt: Date.now(),
+            visits: 0
+          });
+        }
+
+        const wasEditing = Boolean(editingId);
+        const saved = persist();
+        closeDialog();
+        render();
+        if (saved) showToast(wasEditing ? 'Bookmark updated' : 'Bookmark added');
+      }
+
+      function togglePinned(id) {
+        bookmarks = bookmarks.map(item => item.id === id ? { ...item, pinned: !item.pinned } : item);
+        persist();
+        render();
+      }
+
+      function toggleArchived(id) {
+        bookmarks = bookmarks.map(item => item.id === id ? { ...item, archived: !item.archived } : item);
+        persist();
+        render();
+        showToast('Bookmark moved');
+      }
+
+      function deleteBookmark(id) {
+        const confirmed = window.confirm('Delete this bookmark?');
+        if (!confirmed) return;
+        bookmarks = bookmarks.filter(item => item.id !== id);
+        persist();
+        render();
+        showToast('Bookmark deleted');
+      }
+
+      function incrementVisits(id) {
+        bookmarks = bookmarks.map(item => item.id === id ? { ...item, visits: (item.visits || 0) + 1 } : item);
+        persist();
+      }
+
+      function exportBookmarks() {
+        const payload = {
+          exportedAt: new Date().toISOString(),
+          bookmarks
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'quickspace-bookmarks.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Backup exported');
+      }
+
+      function importBookmarks(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result);
+            const imported = Array.isArray(parsed) ? parsed : parsed.bookmarks;
+            if (!Array.isArray(imported)) throw new Error('Invalid file');
+            bookmarks = imported.map(item => ({
+              id: item.id || createId(),
+              title: item.title || 'Untitled',
+              url: normalizeUrl(item.url),
+              description: item.description || '',
+              tags: Array.isArray(item.tags) ? item.tags : [],
+              archived: Boolean(item.archived),
+              pinned: Boolean(item.pinned),
+              createdAt: item.createdAt || Date.now(),
+              visits: Number(item.visits || 0)
+            }));
+            persist();
+            render();
+            showToast('Backup imported');
+          } catch (error) {
+            alert('That file could not be imported.');
+          } finally {
+            event.target.value = '';
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        els.toast.textContent = message;
+        els.toast.classList.add('show');
+        toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2200);
+      }
+
+      function sortLabelFor(value) {
+        if (value === 'title') return 'Title';
+        if (value === 'visits') return 'Most opened';
+        return 'Newest';
+      }
+
+      function safeHost(url) {
+        try {
+          const parsed = new URL(url);
+          return parsed.hostname.replace(/^www\./, '');
+        } catch {
+          return url;
+        }
+      }
+
+      function faviconMarkup(bookmark) {
+        const host = safeHost(bookmark.url);
+        const fallback = escapeHtml((bookmark.title || '?').trim().charAt(0).toUpperCase() || '?');
+        const src = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
+        return `<span class="site-icon-fallback" aria-hidden="true">${fallback}</span><img src="${src}" alt="" loading="lazy">`;
+      }
+
+      function formatDate(timestamp) {
+        if (!timestamp) return 'Never';
+        const date = new Date(timestamp);
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function escapeAttribute(value) {
+        return escapeHtml(value).replace(/`/g, '&#96;');
+      }
+    })();
+  </script>
+</body>
+</html>
